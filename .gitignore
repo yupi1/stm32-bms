@@ -1,0 +1,19 @@
+# Build
+build/
+cmake-build-*/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+
+# IDE
+.vscode/
+.idea/
+
+# STM32CubeIDE
+*.project
+*.cproject
+.settings/
+
+# OS
+.DS_Store
