@@ -23,12 +23,11 @@
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
-#include <string.h>
-#include <stdio.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <string.h>
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -50,6 +49,8 @@
 
 /* USER CODE BEGIN PV */
 uint16_t adc_buf[ADC_BUF_SIZE];
+volatile uint8_t adc_ready_flag = 0;
+volatile float voltage = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -96,18 +97,28 @@ int main(void)
   MX_USART2_UART_Init();
   MX_ADC1_Init();
   MX_TIM2_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start(&htim2);
   HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buf, ADC_BUF_SIZE);
 
-  uint16_t adc_value = 0;
-  char msg[50];
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    adc_ready_flag = 0;
+
+    uint32_t sum = 0;
+    for(int i = 0; i < ADC_BUF_SIZE; i++) sum += adc_buf[i];
+    uint16_t avg = sum / ADC_BUF_SIZE;
+
+    voltage = (float)avg * 3.3f * (100.0f + 47.0f) / (4095.0f * 47.0f);
+
+    char msg[64];
+    snprintf(msg, sizeof(msg), "V:%.2f\n", voltage);
+    HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), 100);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -167,20 +178,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
     if (hadc->Instance == ADC1)
     {
-        uint32_t sum = 0;
-
-        for (int i = 0; i < ADC_BUF_SIZE; i++)
-            sum += adc_buf[i];
-
-        uint16_t avg = sum / ADC_BUF_SIZE;
-
-        float voltage = (float)avg * 3.3f * (100.0f + 47.0f) / (4095.0f * 47.0f);
-
-        char msg[50];
-        int v_int = (int)voltage;
-        int v_frac = (int)((voltage - v_int) * 100); 
-        sprintf(msg, "RAW=%lu V=%d.%02d\r\n", avg, v_int, v_frac);
-        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), 100);
+      adc_ready_flag = 1;
     }
 }
 
