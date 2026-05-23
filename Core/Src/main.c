@@ -115,10 +115,18 @@ int main(void)
     uint16_t avg = sum / ADC_BUF_SIZE;
 
     voltage = (float)avg * 3.3f * (100.0f + 47.0f) / (4095.0f * 47.0f);
+    uint8_t voltage_mV = (uint16_t)(voltage * 100);
+    uint8_t packet[6];
 
-    char msg[64];
-    snprintf(msg, sizeof(msg), "V:%.2f\n", voltage);
-    HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), 100);
+    packet[0] = 0xAA;
+    packet[1] = 2;
+    packet[2] = voltage_mV & 0xFF;
+    packet[3] = voltage_mV >> 8;
+    packet[4] = packet[1] ^ packet[2] ^ packet[3];
+    packet[5] = 0xFF;
+
+    HAL_UART_Transmit(&huart1, packet, sizeof(packet), 100);
+    HAL_Delay(1000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
